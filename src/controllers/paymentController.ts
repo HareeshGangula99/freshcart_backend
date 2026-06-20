@@ -15,11 +15,13 @@ const razorpay = new Razorpay({
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT),
+  port: Number(process.env.SMTP_PORT) || 587,
+  secure: false,
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  tls: { rejectUnauthorized: false },
 });
 
 export const createRazorpayOrder = async (req: Request, res: Response) => {
@@ -140,31 +142,27 @@ export const verifyPayment = async (req: Request, res: Response) => {
       `<li>${item.productId?.name} × ${item.quantity} — ₹${item.priceAtPurchase * item.quantity}</li>`
     ).join('');
 
-    // 2. User mail confirmation email
-    try {
-      await transporter.sendMail({
-        from: process.env.SMTP_FROM,
-        to: customer.email,
-        subject: ' Order Confirmed - FreshCart',
-        html: `
-          <div style="font-family:sans-serif;max-width:500px;margin:0 auto;">
-            <h2 style="color:#16a34a;">Order Confirmed! 🎉</h2>
-            <p>Hello <strong>${customer.name}</strong>,</p>
-            <p>Your order <strong>#${orderId.toString().slice(-8).toUpperCase()}</strong> has been confirmed.</p>
-            <h3>Items Ordered:</h3>
-            <ul>${itemsList}</ul>
-            <p><strong>Total Paid:</strong> ₹${order.totalAmount}</p>
-            <p><strong>Deliver To:</strong> ${orderAny.deliveryAddress?.street}, ${orderAny.deliveryAddress?.city} - ${orderAny.deliveryAddress?.zip}</p>
-            <br/>
-            <p>We'll notify you once your order is dispatched! 🚚</p>
-            <p style="color:#6b7280;font-size:12px;">Thank you for shopping with FreshCart!</p>
-          </div>
-        `,
-      });
-      console.log('User email sent:', customer.email);
-    } catch (e) {
-      console.error('User email failed:', e);
-    }
+    // 2. User confirmation email - async, don't block response
+    transporter.sendMail({
+      from: process.env.SMTP_FROM,
+      to: customer.email,
+      subject: ' Order Confirmed - FreshCart',
+      html: `
+        <div style="font-family:sans-serif;max-width:500px;margin:0 auto;">
+          <h2 style="color:#16a34a;">Order Confirmed! 🎉</h2>
+          <p>Hello <strong>${customer.name}</strong>,</p>
+          <p>Your order <strong>#${orderId.toString().slice(-8).toUpperCase()}</strong> has been confirmed.</p>
+          <h3>Items Ordered:</h3>
+          <ul>${itemsList}</ul>
+          <p><strong>Total Paid:</strong> ₹${order.totalAmount}</p>
+          <p><strong>Deliver To:</strong> ${orderAny.deliveryAddress?.street}, ${orderAny.deliveryAddress?.city} - ${orderAny.deliveryAddress?.zip}</p>
+          <br/>
+          <p>We'll notify you once your order is dispatched! 🚚</p>
+          <p style="color:#6b7280;font-size:12px;">Thank you for shopping with FreshCart!</p>
+        </div>
+      `,
+    }).then(() => console.log('User email sent:', customer.email))
+      .catch(e => console.error('User email failed:', e));
 
     //  3. Manager notification - async, don't block response
     User.find({ role: UserRole.STORE_MANAGER, status: UserStatus.APPROVED }).select('email name').then(managers => {
