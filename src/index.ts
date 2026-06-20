@@ -88,10 +88,10 @@ mongoose.connect(MONGODB_URI)
     console.log('Connected to MongoDB');
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
-      if (process.env.RESEND_API_KEY) {
-        console.log('Resend email API configured');
+      if (process.env.SENDGRID_API_KEY) {
+        console.log('SendGrid email API configured');
       } else {
-        console.log('Email not configured - RESEND_API_KEY missing');
+        console.log('Email not configured - SENDGRID_API_KEY missing');
       }
     });
   })

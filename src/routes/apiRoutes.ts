@@ -70,10 +70,10 @@ router.get('/orders/:id/tracking', protect, getOrderTracking);
 router.post('/test-email', async (_req, res) => {
   try {
     console.log('Test email triggered');
-    console.log('RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY);
+    console.log('SENDGRID_API_KEY exists:', !!process.env.SENDGRID_API_KEY);
 
     const result = await sendEmail({
-      to: process.env.SMTP_USER || 'test@resend.dev',
+      to: process.env.SMTP_USER || 'test@example.com',
       subject: 'FreshCart Test Email',
       html: '<h1 style="color:green;">FreshCart email is working!</h1><p>This is a test email from your backend.</p>',
     });
