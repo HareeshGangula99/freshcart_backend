@@ -1,0 +1,51 @@
+import User, { UserRole, UserStatus } from '../models/User';
+import bcrypt from 'bcryptjs';
+export const getPendingApprovals = async (req, res) => {
+    try {
+        const users = await User.find({ status: UserStatus.PENDING });
+        res.json(users);
+    }
+    catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+export const approveUser = async (req, res) => {
+    try {
+        const user = await User.findByIdAndUpdate(req.params.id, { status: UserStatus.APPROVED }, { new: true });
+        res.json({ message: 'User approved', user });
+    }
+    catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+export const createDeliveryPartner = async (req, res) => {
+    try {
+        const { name, email, password, phone } = req.body;
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const partner = await User.create({
+            name,
+            email,
+            password: hashedPassword,
+            phone,
+            role: UserRole.DELIVERY_PARTNER,
+            status: UserStatus.APPROVED,
+        });
+        res.status(201).json({ message: 'Delivery partner created', partner });
+    }
+    catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+// ✅ New: Get all approved delivery partners (for manager dispatch dropdown)
+export const getDeliveryPartners = async (req, res) => {
+    try {
+        const partners = await User.find({
+            role: UserRole.DELIVERY_PARTNER,
+            status: UserStatus.APPROVED,
+        }).select('_id name email phone');
+        res.json(partners);
+    }
+    catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
