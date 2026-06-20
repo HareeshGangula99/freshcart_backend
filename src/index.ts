@@ -6,6 +6,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import rateLimit from 'express-rate-limit';
+import nodemailer from 'nodemailer';
 import apiRoutes from './routes/apiRoutes';
 import { setupChatHandler } from './socket/chatHandler';
 
@@ -89,18 +90,17 @@ mongoose.connect(MONGODB_URI)
       console.log(`Server running on port ${PORT}`);
       // Verify SMTP on startup
       if (process.env.SMTP_HOST) {
-        import('nodemailer').then(({ default: nm }) => {
-          const t = nm.createTransport({
-            host: process.env.SMTP_HOST,
-            port: Number(process.env.SMTP_PORT) || 587,
-            secure: false,
-            auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-            tls: { rejectUnauthorized: false },
-          });
-          t.verify()
-            .then(() => console.log('✅ SMTP connection verified'))
-            .catch((e: any) => console.error('❌ SMTP connection failed:', e.message));
+        console.log('📧 SMTP config found, verifying...');
+        const t = nodemailer.createTransport({
+          host: process.env.SMTP_HOST,
+          port: Number(process.env.SMTP_PORT) || 587,
+          secure: false,
+          auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+          tls: { rejectUnauthorized: false },
         });
+        t.verify()
+          .then(() => console.log('✅ SMTP connection verified'))
+          .catch((e: any) => console.error('❌ SMTP connection failed:', e.message));
       } else {
         console.log('⚠️ SMTP not configured - emails disabled');
       }
