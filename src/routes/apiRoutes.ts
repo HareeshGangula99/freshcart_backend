@@ -1,6 +1,6 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import nodemailer from 'nodemailer';
+import { sendEmail } from '../config/email';
 import { register, login, getProfile, googleLogin } from '../controllers/authController';
 import { sendOtp, verifyOtp } from '../controllers/otpController';
 import { getProducts, getProductById, createProduct, updateProduct, updateStock, deleteProduct, getCategories } from '../controllers/productController';
@@ -69,41 +69,20 @@ router.get('/orders/:id/tracking', protect, getOrderTracking);
 // Test email endpoint - REMOVE after debugging
 router.post('/test-email', async (_req, res) => {
   try {
-    console.log('📧 Test email triggered');
-    console.log('SMTP_HOST:', process.env.SMTP_HOST);
-    console.log('SMTP_PORT:', process.env.SMTP_PORT);
-    console.log('SMTP_USER:', process.env.SMTP_USER);
-    console.log('SMTP_PASS exists:', !!process.env.SMTP_PASS);
-    console.log('SMTP_FROM:', process.env.SMTP_FROM);
+    console.log('Test email triggered');
+    console.log('RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY);
 
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: 465,
-      secure: true,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-      tls: { rejectUnauthorized: false },
-      connectionTimeout: 10000,
-      family: 4,
-    } as any);
-
-    await transporter.verify();
-    console.log('✅ SMTP verify passed');
-
-    const info = await transporter.sendMail({
-      from: process.env.SMTP_FROM,
-      to: process.env.SMTP_USER,
+    const result = await sendEmail({
+      to: process.env.SMTP_USER || 'test@resend.dev',
       subject: 'FreshCart Test Email',
-      html: '<h1 style="color:green;">FreshCart SMTP is working!</h1><p>This is a test email from your backend.</p>',
+      html: '<h1 style="color:green;">FreshCart email is working!</h1><p>This is a test email from your backend.</p>',
     });
 
-    console.log('✅ Test email sent:', info.messageId);
-    res.json({ success: true, messageId: info.messageId, message: 'Email sent to ' + process.env.SMTP_USER });
+    console.log('Test email sent:', result.data?.id);
+    res.json({ success: true, id: result.data?.id, message: 'Email sent successfully' });
   } catch (error: any) {
-    console.error('❌ Test email failed:', error.message);
-    res.status(500).json({ success: false, error: error.message, stack: error.stack });
+    console.error('Test email failed:', error.message);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

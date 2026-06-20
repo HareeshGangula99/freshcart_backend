@@ -38,27 +38,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.verifyPayment = exports.createRazorpayOrder = void 0;
 const razorpay_1 = __importDefault(require("razorpay"));
-const nodemailer_1 = __importDefault(require("nodemailer"));
 const Order_1 = __importStar(require("../models/Order"));
 const Product_1 = __importDefault(require("../models/Product"));
 const User_1 = __importStar(require("../models/User"));
-const dotenv_1 = __importDefault(require("dotenv"));
-dotenv_1.default.config();
+const email_1 = require("../config/email");
 const razorpay = new razorpay_1.default({
     key_id: process.env.RAZORPAY_KEY_ID || '',
     key_secret: process.env.RAZORPAY_KEY_SECRET || '',
-});
-const transporter = nodemailer_1.default.createTransport({
-    host: process.env.SMTP_HOST,
-    port: 465,
-    secure: true,
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-    },
-    tls: { rejectUnauthorized: false },
-    connectionTimeout: 10000,
-    family: 4,
 });
 const createRazorpayOrder = async (req, res) => {
     try {
@@ -160,13 +146,12 @@ const verifyPayment = async (req, res) => {
         // Items list for emails
         const itemsList = order.products.map((item) => `<li>${item.productId?.name} × ${item.quantity} — ₹${item.priceAtPurchase * item.quantity}</li>`).join('');
         // 2. User confirmation email - async, don't block response
-        transporter.sendMail({
-            from: process.env.SMTP_FROM,
+        (0, email_1.sendEmail)({
             to: customer.email,
-            subject: ' Order Confirmed - FreshCart',
+            subject: 'Order Confirmed - FreshCart',
             html: `
         <div style="font-family:sans-serif;max-width:500px;margin:0 auto;">
-          <h2 style="color:#16a34a;">Order Confirmed! 🎉</h2>
+          <h2 style="color:#16a34a;">Order Confirmed!</h2>
           <p>Hello <strong>${customer.name}</strong>,</p>
           <p>Your order <strong>#${orderId.toString().slice(-8).toUpperCase()}</strong> has been confirmed.</p>
           <h3>Items Ordered:</h3>
@@ -174,7 +159,7 @@ const verifyPayment = async (req, res) => {
           <p><strong>Total Paid:</strong> ₹${order.totalAmount}</p>
           <p><strong>Deliver To:</strong> ${orderAny.deliveryAddress?.street}, ${orderAny.deliveryAddress?.city} - ${orderAny.deliveryAddress?.zip}</p>
           <br/>
-          <p>We'll notify you once your order is dispatched! 🚚</p>
+          <p>We'll notify you once your order is dispatched!</p>
           <p style="color:#6b7280;font-size:12px;">Thank you for shopping with FreshCart!</p>
         </div>
       `,
@@ -183,13 +168,12 @@ const verifyPayment = async (req, res) => {
         //  3. Manager notification - async, don't block response
         User_1.default.find({ role: User_1.UserRole.STORE_MANAGER, status: User_1.UserStatus.APPROVED }).select('email name').then(managers => {
             for (const manager of managers) {
-                transporter.sendMail({
-                    from: process.env.SMTP_FROM,
+                (0, email_1.sendEmail)({
                     to: manager.email,
-                    subject: '🛒 New Order Received - FreshCart',
+                    subject: 'New Order Received - FreshCart',
                     html: `
             <div style="font-family:sans-serif;max-width:500px;margin:0 auto;">
-              <h2 style="color:#16a34a;">New Order Alert! 📦</h2>
+              <h2 style="color:#16a34a;">New Order Alert!</h2>
               <p>Hello <strong>${manager.name}</strong>,</p>
               <p>Customer: <strong>${customer.name}</strong> (${customer.email})</p>
               <p>Order ID: <strong>#${orderId.toString().slice(-8).toUpperCase()}</strong></p>
@@ -198,7 +182,7 @@ const verifyPayment = async (req, res) => {
               <p><strong>Total:</strong> ₹${order.totalAmount}</p>
               <p><strong>Address:</strong> ${orderAny.deliveryAddress?.street}, ${orderAny.deliveryAddress?.city} - ${orderAny.deliveryAddress?.zip}</p>
               <br/>
-              <a href="http://localhost:5173/manager" style="background:#16a34a;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;">
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/manager" style="background:#16a34a;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;">
                 Open Manager Dashboard
               </a>
             </div>

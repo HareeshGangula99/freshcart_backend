@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
-const nodemailer_1 = __importDefault(require("nodemailer"));
+const email_1 = require("../config/email");
 const authController_1 = require("../controllers/authController");
 const otpController_1 = require("../controllers/otpController");
 const productController_1 = require("../controllers/productController");
@@ -59,38 +59,19 @@ router.get('/orders/:id/tracking', auth_1.protect, orderController_1.getOrderTra
 // Test email endpoint - REMOVE after debugging
 router.post('/test-email', async (_req, res) => {
     try {
-        console.log('📧 Test email triggered');
-        console.log('SMTP_HOST:', process.env.SMTP_HOST);
-        console.log('SMTP_PORT:', process.env.SMTP_PORT);
-        console.log('SMTP_USER:', process.env.SMTP_USER);
-        console.log('SMTP_PASS exists:', !!process.env.SMTP_PASS);
-        console.log('SMTP_FROM:', process.env.SMTP_FROM);
-        const transporter = nodemailer_1.default.createTransport({
-            host: process.env.SMTP_HOST,
-            port: 465,
-            secure: true,
-            auth: {
-                user: process.env.SMTP_USER,
-                pass: process.env.SMTP_PASS,
-            },
-            tls: { rejectUnauthorized: false },
-            connectionTimeout: 10000,
-            family: 4,
-        });
-        await transporter.verify();
-        console.log('✅ SMTP verify passed');
-        const info = await transporter.sendMail({
-            from: process.env.SMTP_FROM,
-            to: process.env.SMTP_USER,
+        console.log('Test email triggered');
+        console.log('RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY);
+        const result = await (0, email_1.sendEmail)({
+            to: process.env.SMTP_USER || 'test@resend.dev',
             subject: 'FreshCart Test Email',
-            html: '<h1 style="color:green;">FreshCart SMTP is working!</h1><p>This is a test email from your backend.</p>',
+            html: '<h1 style="color:green;">FreshCart email is working!</h1><p>This is a test email from your backend.</p>',
         });
-        console.log('✅ Test email sent:', info.messageId);
-        res.json({ success: true, messageId: info.messageId, message: 'Email sent to ' + process.env.SMTP_USER });
+        console.log('Test email sent:', result.data?.id);
+        res.json({ success: true, id: result.data?.id, message: 'Email sent successfully' });
     }
     catch (error) {
-        console.error('❌ Test email failed:', error.message);
-        res.status(500).json({ success: false, error: error.message, stack: error.stack });
+        console.error('Test email failed:', error.message);
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 exports.default = router;

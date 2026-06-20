@@ -1,23 +1,7 @@
 import { Request, Response } from 'express';
 import Order, { PaymentStatus, OrderStatus } from '../models/Order';
 import User from '../models/User';
-import nodemailer from 'nodemailer';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-  tls: { rejectUnauthorized: false },
-  connectionTimeout: 10000,
-  family: 4,
-} as any);
+import { sendEmail } from '../config/email';
 
 export const getUserOrders = async (req: any, res: Response) => {
   try {
@@ -88,13 +72,12 @@ export const dispatchOrder = async (req: any, res: Response) => {
     res.json({ message: 'Order dispatched and partner assigned', order });
 
     // Send dispatch email async (don't block response)
-    transporter.sendMail({
-      from: process.env.SMTP_FROM,
+    sendEmail({
       to: customer.email,
-      subject: '🚚 Your FreshCart Order is On The Way!',
+      subject: 'Your FreshCart Order is On The Way!',
       html: `
         <div style="font-family:sans-serif;max-width:500px;margin:0 auto;">
-          <h2 style="color:#16a34a;">Your order is dispatched! 🚚</h2>
+          <h2 style="color:#16a34a;">Your order is dispatched!</h2>
           <p>Hello <strong>${customer.name}</strong>,</p>
           <p>Your order <strong>#${order._id.toString().slice(-8).toUpperCase()}</strong> is on the way!</p>
           <p><strong>Delivery Partner:</strong> ${partner?.name}</p>
@@ -155,10 +138,9 @@ export const updateOrderStatus = async (req: any, res: Response) => {
 
       res.json(order);
 
-      transporter.sendMail({
-        from: process.env.SMTP_FROM,
+      sendEmail({
         to: customer.email,
-        subject: '🧾 Invoice - FreshCart Order Delivered!',
+        subject: 'Invoice - FreshCart Order Delivered!',
         html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
           <div style="background:#16a34a;padding:24px;text-align:center;"><h1 style="color:white;margin:0;font-size:24px;">🛒 FreshCart</h1><p style="color:#dcfce7;margin:4px 0 0;">Order Invoice</p></div>
           <div style="padding:24px;">

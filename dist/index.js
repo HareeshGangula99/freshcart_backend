@@ -11,7 +11,6 @@ const cors_1 = __importDefault(require("cors"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
-const nodemailer_1 = __importDefault(require("nodemailer"));
 const apiRoutes_1 = __importDefault(require("./routes/apiRoutes"));
 const chatHandler_1 = require("./socket/chatHandler");
 dotenv_1.default.config();
@@ -82,24 +81,11 @@ mongoose_1.default.connect(MONGODB_URI)
     console.log('Connected to MongoDB');
     server.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);
-        // Verify SMTP on startup
-        if (process.env.SMTP_HOST) {
-            console.log('📧 SMTP config found, verifying...');
-            const t = nodemailer_1.default.createTransport({
-                host: process.env.SMTP_HOST,
-                port: 465,
-                secure: true,
-                auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-                tls: { rejectUnauthorized: false },
-                connectionTimeout: 10000,
-                family: 4,
-            });
-            t.verify()
-                .then(() => console.log('✅ SMTP connection verified'))
-                .catch((e) => console.error('❌ SMTP connection failed:', e.message));
+        if (process.env.RESEND_API_KEY) {
+            console.log('Resend email API configured');
         }
         else {
-            console.log('⚠️ SMTP not configured - emails disabled');
+            console.log('Email not configured - RESEND_API_KEY missing');
         }
     });
 })

@@ -6,7 +6,6 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import rateLimit from 'express-rate-limit';
-import nodemailer from 'nodemailer';
 import apiRoutes from './routes/apiRoutes';
 import { setupChatHandler } from './socket/chatHandler';
 
@@ -88,23 +87,10 @@ mongoose.connect(MONGODB_URI)
     console.log('Connected to MongoDB');
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
-      // Verify SMTP on startup
-      if (process.env.SMTP_HOST) {
-        console.log('📧 SMTP config found, verifying...');
-        const t = nodemailer.createTransport({
-          host: process.env.SMTP_HOST,
-          port: 465,
-          secure: true,
-          auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-          tls: { rejectUnauthorized: false },
-          connectionTimeout: 10000,
-          family: 4,
-        } as any);
-        t.verify()
-          .then(() => console.log('✅ SMTP connection verified'))
-          .catch((e: any) => console.error('❌ SMTP connection failed:', e.message));
+      if (process.env.RESEND_API_KEY) {
+        console.log('Resend email API configured');
       } else {
-        console.log('⚠️ SMTP not configured - emails disabled');
+        console.log('Email not configured - RESEND_API_KEY missing');
       }
     });
   })
