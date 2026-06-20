@@ -13,9 +13,11 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173').split(',');
+
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
   },
   pingInterval: 25000,
@@ -37,7 +39,7 @@ const authLimiter = rateLimit({
   message: { message: 'Too many auth attempts, please try again later' },
 });
 
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173' }));
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json({ limit: '10kb' }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api', generalLimiter);
