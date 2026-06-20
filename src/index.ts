@@ -12,6 +12,7 @@ import { setupChatHandler } from './socket/chatHandler';
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', 1);
 const server = http.createServer(app);
 const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173').split(',');
 
