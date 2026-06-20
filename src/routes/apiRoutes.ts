@@ -1,5 +1,6 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
+import nodemailer from 'nodemailer';
 import { register, login, getProfile, googleLogin } from '../controllers/authController';
 import { sendOtp, verifyOtp } from '../controllers/otpController';
 import { getProducts, getProductById, createProduct, updateProduct, updateStock, deleteProduct, getCategories } from '../controllers/productController';
@@ -64,6 +65,45 @@ router.get('/admin/delivery-partners', protect, authorize(UserRole.STORE_MANAGER
 router.get('/orders/partner', protect, authorize(UserRole.DELIVERY_PARTNER), getPartnerOrders);
 router.get('/orders/active-deliveries', protect, authorize(UserRole.ADMIN), getActiveDeliveries);
 router.get('/orders/:id/tracking', protect, getOrderTracking);
+
+// Test email endpoint - REMOVE after debugging
+router.post('/test-email', async (_req, res) => {
+  try {
+    console.log('📧 Test email triggered');
+    console.log('SMTP_HOST:', process.env.SMTP_HOST);
+    console.log('SMTP_PORT:', process.env.SMTP_PORT);
+    console.log('SMTP_USER:', process.env.SMTP_USER);
+    console.log('SMTP_PASS exists:', !!process.env.SMTP_PASS);
+    console.log('SMTP_FROM:', process.env.SMTP_FROM);
+
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT) || 587,
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+      tls: { rejectUnauthorized: false },
+    });
+
+    await transporter.verify();
+    console.log('✅ SMTP verify passed');
+
+    const info = await transporter.sendMail({
+      from: process.env.SMTP_FROM,
+      to: process.env.SMTP_USER,
+      subject: 'FreshCart Test Email',
+      html: '<h1 style="color:green;">FreshCart SMTP is working!</h1><p>This is a test email from your backend.</p>',
+    });
+
+    console.log('✅ Test email sent:', info.messageId);
+    res.json({ success: true, messageId: info.messageId, message: 'Email sent to ' + process.env.SMTP_USER });
+  } catch (error: any) {
+    console.error('❌ Test email failed:', error.message);
+    res.status(500).json({ success: false, error: error.message, stack: error.stack });
+  }
+});
 
 
 export default router;
