@@ -58,6 +58,7 @@ const transporter = nodemailer_1.default.createTransport({
     },
     tls: { rejectUnauthorized: false },
     connectionTimeout: 10000,
+    family: 4,
 });
 const createRazorpayOrder = async (req, res) => {
     try {

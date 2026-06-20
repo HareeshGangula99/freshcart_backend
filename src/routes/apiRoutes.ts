@@ -86,7 +86,8 @@ router.post('/test-email', async (_req, res) => {
       },
       tls: { rejectUnauthorized: false },
       connectionTimeout: 10000,
-    });
+      family: 4,
+    } as any);
 
     await transporter.verify();
     console.log('✅ SMTP verify passed');

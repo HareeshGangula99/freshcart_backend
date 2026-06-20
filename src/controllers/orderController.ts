@@ -16,7 +16,8 @@ const transporter = nodemailer.createTransport({
   },
   tls: { rejectUnauthorized: false },
   connectionTimeout: 10000,
-});
+  family: 4,
+} as any);
 
 export const getUserOrders = async (req: any, res: Response) => {
   try {

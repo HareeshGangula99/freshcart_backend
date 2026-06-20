@@ -98,7 +98,8 @@ mongoose.connect(MONGODB_URI)
           auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
           tls: { rejectUnauthorized: false },
           connectionTimeout: 10000,
-        });
+          family: 4,
+        } as any);
         t.verify()
           .then(() => console.log('✅ SMTP connection verified'))
           .catch((e: any) => console.error('❌ SMTP connection failed:', e.message));
