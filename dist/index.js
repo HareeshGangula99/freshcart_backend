@@ -16,9 +16,27 @@ const chatHandler_1 = require("./socket/chatHandler");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const server = http_1.default.createServer(app);
+const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173').split(',');
+const corsOptions = {
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        }
+        else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+};
 const io = new socket_io_1.Server(server, {
     cors: {
-        origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+        origin: (origin, callback) => {
+            if (!origin || allowedOrigins.includes(origin)) {
+                callback(null, true);
+            }
+            else {
+                callback(new Error('Not allowed by CORS'));
+            }
+        },
         methods: ['GET', 'POST'],
     },
     pingInterval: 25000,
@@ -37,7 +55,7 @@ const authLimiter = (0, express_rate_limit_1.default)({
     max: 20,
     message: { message: 'Too many auth attempts, please try again later' },
 });
-app.use((0, cors_1.default)({ origin: process.env.FRONTEND_URL || 'http://localhost:5173' }));
+app.use((0, cors_1.default)(corsOptions));
 app.use(express_1.default.json({ limit: '10kb' }));
 app.use('/uploads', express_1.default.static(path_1.default.join(__dirname, '../uploads')));
 app.use('/api', generalLimiter);
