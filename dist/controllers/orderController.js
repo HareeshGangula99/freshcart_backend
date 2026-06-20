@@ -1,8 +1,47 @@
-import Order, { PaymentStatus, OrderStatus } from '../models/Order';
-import nodemailer from 'nodemailer';
-import dotenv from 'dotenv';
-dotenv.config();
-const transporter = nodemailer.createTransport({
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getOrderTracking = exports.getActiveDeliveries = exports.updateOrderStatus = exports.dispatchOrder = exports.getPartnerOrders = exports.getManagerOrders = exports.getUserOrders = void 0;
+const Order_1 = __importStar(require("../models/Order"));
+const nodemailer_1 = __importDefault(require("nodemailer"));
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
+const transporter = nodemailer_1.default.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT),
     auth: {
@@ -10,10 +49,11 @@ const transporter = nodemailer.createTransport({
         pass: process.env.SMTP_PASS,
     },
 });
-export const getUserOrders = async (req, res) => {
+const getUserOrders = async (req, res) => {
     try {
-        const orders = await Order.find({ userId: req.user.id })
+        const orders = await Order_1.default.find({ userId: req.user.id })
             .populate('products.productId', 'name price imageURL')
+            .populate('deliveryPartnerId', 'name email phone')
             .sort({ createdAt: -1 });
         res.json(orders);
     }
@@ -21,11 +61,12 @@ export const getUserOrders = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
-export const getManagerOrders = async (req, res) => {
+exports.getUserOrders = getUserOrders;
+const getManagerOrders = async (req, res) => {
     try {
-        const orders = await Order.find({
-            paymentStatus: PaymentStatus.PAID,
-            orderStatus: { $nin: [OrderStatus.DELIVERED] },
+        const orders = await Order_1.default.find({
+            paymentStatus: Order_1.PaymentStatus.PAID,
+            orderStatus: { $nin: [Order_1.OrderStatus.DELIVERED] },
         })
             .populate('userId', 'name email')
             .populate('products.productId', 'name price')
@@ -37,14 +78,16 @@ export const getManagerOrders = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
-export const getPartnerOrders = async (req, res) => {
+exports.getManagerOrders = getManagerOrders;
+const getPartnerOrders = async (req, res) => {
     try {
-        const orders = await Order.find({
+        const orders = await Order_1.default.find({
             deliveryPartnerId: req.user.id,
-            orderStatus: OrderStatus.DISPATCHED,
+            orderStatus: { $in: [Order_1.OrderStatus.DISPATCHED, Order_1.OrderStatus.OUT_FOR_DELIVERY] },
         })
             .populate('userId', 'name email phone')
             .populate('products.productId', 'name price imageURL')
+            .select('+customerLocation +deliveryAddress')
             .sort({ createdAt: -1 });
         res.json(orders);
     }
@@ -52,10 +95,11 @@ export const getPartnerOrders = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
-export const dispatchOrder = async (req, res) => {
+exports.getPartnerOrders = getPartnerOrders;
+const dispatchOrder = async (req, res) => {
     try {
         const { deliveryPartnerId } = req.body;
-        const order = await Order.findByIdAndUpdate(req.params.id, { orderStatus: 'DISPATCHED', deliveryPartnerId }, { new: true }).populate('userId deliveryPartnerId');
+        const order = await Order_1.default.findByIdAndUpdate(req.params.id, { orderStatus: 'DISPATCHED', deliveryPartnerId }, { returnDocument: 'after' }).populate('userId deliveryPartnerId');
         if (!order)
             return res.status(404).json({ message: 'Order not found' });
         const customer = order.userId;
@@ -94,10 +138,14 @@ export const dispatchOrder = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
-export const updateOrderStatus = async (req, res) => {
+exports.dispatchOrder = dispatchOrder;
+const updateOrderStatus = async (req, res) => {
     try {
-        const { status } = req.body;
-        const order = await Order.findByIdAndUpdate(req.params.id, { orderStatus: status }, { new: true })
+        const { status, deliveryProof } = req.body;
+        const updateData = { orderStatus: status };
+        if (deliveryProof)
+            updateData.deliveryProof = deliveryProof;
+        const order = await Order_1.default.findByIdAndUpdate(req.params.id, updateData, { returnDocument: 'after' })
             .populate('userId', 'name email')
             .populate('products.productId', 'name price');
         if (!order)
@@ -192,3 +240,35 @@ export const updateOrderStatus = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+exports.updateOrderStatus = updateOrderStatus;
+const getActiveDeliveries = async (req, res) => {
+    try {
+        const orders = await Order_1.default.find({
+            orderStatus: { $in: [Order_1.OrderStatus.DISPATCHED, Order_1.OrderStatus.OUT_FOR_DELIVERY] },
+            deliveryPartnerId: { $exists: true },
+        })
+            .populate('userId', 'name email phone')
+            .populate('deliveryPartnerId', 'name email phone')
+            .populate('products.productId', 'name price imageURL')
+            .sort({ createdAt: -1 });
+        res.json(orders);
+    }
+    catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+exports.getActiveDeliveries = getActiveDeliveries;
+const getOrderTracking = async (req, res) => {
+    try {
+        const order = await Order_1.default.findById(req.params.id)
+            .select('deliveryPartnerLocation customerLocation deliveryAddress orderStatus deliveryPartnerId')
+            .populate('deliveryPartnerId', 'name email phone');
+        if (!order)
+            return res.status(404).json({ message: 'Order not found' });
+        res.json(order);
+    }
+    catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+exports.getOrderTracking = getOrderTracking;

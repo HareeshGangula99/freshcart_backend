@@ -34,20 +34,10 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
-const ProductSchema = new mongoose_1.Schema({
-    name: { type: String, required: true },
-    description: { type: String },
-    price: { type: Number, required: true },
-    category: { type: String },
-    categories: [{ type: String }],
-    uom: { type: String, default: 'qty', enum: ['kg', 'g', 'qty', 'ltr', 'ml', 'dozen', 'piece'] },
-    imageURL: { type: String },
-    stockQuantity: { type: Number, required: true },
-    storeId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User', required: true },
+const CategorySchema = new mongoose_1.Schema({
+    name: { type: String, required: true, unique: true },
+    icon: { type: String, default: 'bi-grid' },
+    color: { type: String, default: '#059669' },
     createdAt: { type: Date, default: Date.now },
 });
-ProductSchema.index({ category: 1, createdAt: -1 });
-ProductSchema.index({ categories: 1 });
-ProductSchema.index({ name: 'text' });
-ProductSchema.index({ storeId: 1 });
-exports.default = mongoose_1.default.model('Product', ProductSchema);
+exports.default = mongoose_1.default.model('Category', CategorySchema);

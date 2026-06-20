@@ -1,39 +1,58 @@
-import express from 'express';
-import { register, login, getProfile, googleLogin, phoneLogin } from '../controllers/authController';
-import { getProducts, getProductById, createProduct, updateStock, deleteProduct, getCategories } from '../controllers/productController';
-import { createRazorpayOrder, verifyPayment } from '../controllers/paymentController';
-import { getUserOrders, getManagerOrders, dispatchOrder, updateOrderStatus, getPartnerOrders } from '../controllers/orderController';
-import { getPendingApprovals, approveUser, createDeliveryPartner, getDeliveryPartners, // ✅ New import
- } from '../controllers/adminController';
-import { protect, authorize } from '../middleware/auth';
-import { UserRole } from '../models/User';
-import { upload } from '../middleware/upload';
-const router = express.Router();
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = __importDefault(require("express"));
+const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
+const authController_1 = require("../controllers/authController");
+const otpController_1 = require("../controllers/otpController");
+const productController_1 = require("../controllers/productController");
+const categoryController_1 = require("../controllers/categoryController");
+const paymentController_1 = require("../controllers/paymentController");
+const orderController_1 = require("../controllers/orderController");
+const adminController_1 = require("../controllers/adminController");
+const auth_1 = require("../middleware/auth");
+const User_1 = require("../models/User");
+const router = express_1.default.Router();
+const authLimiter = (0, express_rate_limit_1.default)({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    message: { message: 'Too many auth attempts, please try again later' },
+});
 // Auth
-router.post('/auth/signup', register);
-router.post('/auth/login', login);
-router.post('/auth/google', googleLogin);
-router.post('/auth/phone', phoneLogin);
-router.get('/user/profile', protect, getProfile);
+router.post('/auth/signup', authLimiter, authController_1.register);
+router.post('/auth/login', authLimiter, authController_1.login);
+router.post('/auth/google', authLimiter, authController_1.googleLogin);
+router.post('/auth/send-otp', authLimiter, otpController_1.sendOtp);
+router.post('/auth/verify-otp', authLimiter, otpController_1.verifyOtp);
+router.get('/user/profile', auth_1.protect, authController_1.getProfile);
 // Products
-router.get('/products', getProducts);
-router.get('/products/:id', getProductById);
-router.get('/categories', getCategories);
-router.post('/admin/products', protect, authorize(UserRole.ADMIN), upload.single('image'), createProduct);
-router.put('/manager/products/:id', protect, authorize(UserRole.STORE_MANAGER), updateStock);
-router.delete('/admin/products/:id', protect, authorize(UserRole.ADMIN), deleteProduct);
+router.get('/products', productController_1.getProducts);
+router.get('/products/:id', productController_1.getProductById);
+router.get('/categories', productController_1.getCategories);
+// Category Management
+router.get('/admin/categories', auth_1.protect, (0, auth_1.authorize)(User_1.UserRole.ADMIN), categoryController_1.getCategories);
+router.post('/admin/categories', auth_1.protect, (0, auth_1.authorize)(User_1.UserRole.ADMIN), categoryController_1.createCategory);
+router.delete('/admin/categories/:id', auth_1.protect, (0, auth_1.authorize)(User_1.UserRole.ADMIN), categoryController_1.deleteCategory);
+router.post('/admin/products', auth_1.protect, (0, auth_1.authorize)(User_1.UserRole.ADMIN), productController_1.createProduct);
+router.put('/admin/products/:id', auth_1.protect, (0, auth_1.authorize)(User_1.UserRole.ADMIN), productController_1.updateProduct);
+router.put('/manager/products/:id', auth_1.protect, (0, auth_1.authorize)(User_1.UserRole.STORE_MANAGER), productController_1.updateStock);
+router.delete('/admin/products/:id', auth_1.protect, (0, auth_1.authorize)(User_1.UserRole.ADMIN), productController_1.deleteProduct);
 // Payments & Orders
-router.post('/orders/create', protect, createRazorpayOrder);
-router.post('/orders/verify', verifyPayment);
-router.get('/orders/user', protect, getUserOrders);
-router.get('/orders/manager', protect, authorize(UserRole.STORE_MANAGER), getManagerOrders);
-router.patch('/orders/:id/dispatch', protect, authorize(UserRole.STORE_MANAGER), dispatchOrder);
-router.patch('/orders/:id/status', protect, authorize(UserRole.DELIVERY_PARTNER), updateOrderStatus);
+router.post('/orders/create', auth_1.protect, paymentController_1.createRazorpayOrder);
+router.post('/orders/verify', paymentController_1.verifyPayment);
+router.get('/orders/user', auth_1.protect, orderController_1.getUserOrders);
+router.get('/orders/manager', auth_1.protect, (0, auth_1.authorize)(User_1.UserRole.STORE_MANAGER), orderController_1.getManagerOrders);
+router.patch('/orders/:id/dispatch', auth_1.protect, (0, auth_1.authorize)(User_1.UserRole.STORE_MANAGER), orderController_1.dispatchOrder);
+router.patch('/orders/:id/status', auth_1.protect, (0, auth_1.authorize)(User_1.UserRole.DELIVERY_PARTNER), orderController_1.updateOrderStatus);
 // Admin
-router.get('/admin/requests', protect, authorize(UserRole.ADMIN), getPendingApprovals);
-router.patch('/admin/approve/:id', protect, authorize(UserRole.ADMIN), approveUser);
-router.post('/admin/partners', protect, authorize(UserRole.ADMIN), createDeliveryPartner);
+router.get('/admin/requests', auth_1.protect, (0, auth_1.authorize)(User_1.UserRole.ADMIN), adminController_1.getPendingApprovals);
+router.patch('/admin/approve/:id', auth_1.protect, (0, auth_1.authorize)(User_1.UserRole.ADMIN), adminController_1.approveUser);
+router.post('/admin/partners', auth_1.protect, (0, auth_1.authorize)(User_1.UserRole.ADMIN), adminController_1.createDeliveryPartner);
 // ✅ New: Delivery partners list (manager can fetch for dispatch dropdown)
-router.get('/admin/delivery-partners', protect, authorize(UserRole.STORE_MANAGER), getDeliveryPartners);
-router.get('/orders/partner', protect, authorize(UserRole.DELIVERY_PARTNER), getPartnerOrders);
-export default router;
+router.get('/admin/delivery-partners', auth_1.protect, (0, auth_1.authorize)(User_1.UserRole.STORE_MANAGER), adminController_1.getDeliveryPartners);
+router.get('/orders/partner', auth_1.protect, (0, auth_1.authorize)(User_1.UserRole.DELIVERY_PARTNER), orderController_1.getPartnerOrders);
+router.get('/orders/active-deliveries', auth_1.protect, (0, auth_1.authorize)(User_1.UserRole.ADMIN), orderController_1.getActiveDeliveries);
+router.get('/orders/:id/tracking', auth_1.protect, orderController_1.getOrderTracking);
+exports.default = router;

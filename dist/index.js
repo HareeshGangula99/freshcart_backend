@@ -1,45 +1,64 @@
-import express from 'express';
-import http from 'http';
-import { Server } from 'socket.io';
-import mongoose from 'mongoose';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import apiRoutes from './routes/apiRoutes';
-import { setupChatHandler } from './socket/chatHandler';
-dotenv.config();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server, {
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = __importDefault(require("express"));
+const http_1 = __importDefault(require("http"));
+const socket_io_1 = require("socket.io");
+const mongoose_1 = __importDefault(require("mongoose"));
+const cors_1 = __importDefault(require("cors"));
+const dotenv_1 = __importDefault(require("dotenv"));
+const path_1 = __importDefault(require("path"));
+const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
+const apiRoutes_1 = __importDefault(require("./routes/apiRoutes"));
+const chatHandler_1 = require("./socket/chatHandler");
+dotenv_1.default.config();
+const app = (0, express_1.default)();
+const server = http_1.default.createServer(app);
+const io = new socket_io_1.Server(server, {
     cors: {
-        origin: '*',
+        origin: process.env.FRONTEND_URL || 'http://localhost:5173',
         methods: ['GET', 'POST'],
     },
+    pingInterval: 25000,
+    pingTimeout: 60000,
 });
-app.use(cors());
-app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Rate limiting
+const generalLimiter = (0, express_rate_limit_1.default)({
+    windowMs: 15 * 60 * 1000,
+    max: 200,
+    message: { message: 'Too many requests, please try again later' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+const authLimiter = (0, express_rate_limit_1.default)({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    message: { message: 'Too many auth attempts, please try again later' },
+});
+app.use((0, cors_1.default)({ origin: process.env.FRONTEND_URL || 'http://localhost:5173' }));
+app.use(express_1.default.json({ limit: '10kb' }));
+app.use('/uploads', express_1.default.static(path_1.default.join(__dirname, '../uploads')));
+app.use('/api', generalLimiter);
 // ✅ Attach io to every request so controllers can emit socket events
 app.use((req, _res, next) => {
     req.io = io;
     next();
 });
 // Routes
-app.use('/api', apiRoutes);
+app.use('/api', apiRoutes_1.default);
 // Socket.io logic
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
-    setupChatHandler(io, socket);
+    (0, chatHandler_1.setupChatHandler)(io, socket);
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
     });
 });
 const PORT = process.env.PORT || 5000;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/freshcart';
-mongoose.connect(MONGODB_URI)
+mongoose_1.default.connect(MONGODB_URI)
     .then(() => {
     console.log('Connected to MongoDB');
     server.listen(PORT, () => {
