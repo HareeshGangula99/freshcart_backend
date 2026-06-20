@@ -93,10 +93,11 @@ mongoose.connect(MONGODB_URI)
         console.log('📧 SMTP config found, verifying...');
         const t = nodemailer.createTransport({
           host: process.env.SMTP_HOST,
-          port: Number(process.env.SMTP_PORT) || 587,
-          secure: false,
+          port: 465,
+          secure: true,
           auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
           tls: { rejectUnauthorized: false },
+          connectionTimeout: 10000,
         });
         t.verify()
           .then(() => console.log('✅ SMTP connection verified'))

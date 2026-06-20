@@ -43,13 +43,14 @@ const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const transporter = nodemailer_1.default.createTransport({
     host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT) || 587,
-    secure: false,
+    port: 465,
+    secure: true,
     auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
     },
     tls: { rejectUnauthorized: false },
+    connectionTimeout: 10000,
 });
 const getUserOrders = async (req, res) => {
     try {
