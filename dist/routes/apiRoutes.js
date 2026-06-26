@@ -13,6 +13,7 @@ const categoryController_1 = require("../controllers/categoryController");
 const paymentController_1 = require("../controllers/paymentController");
 const orderController_1 = require("../controllers/orderController");
 const adminController_1 = require("../controllers/adminController");
+const chatbotController_1 = require("../controllers/chatbotController");
 const auth_1 = require("../middleware/auth");
 const User_1 = require("../models/User");
 const router = express_1.default.Router();
@@ -56,13 +57,15 @@ router.get('/admin/delivery-partners', auth_1.protect, (0, auth_1.authorize)(Use
 router.get('/orders/partner', auth_1.protect, (0, auth_1.authorize)(User_1.UserRole.DELIVERY_PARTNER), orderController_1.getPartnerOrders);
 router.get('/orders/active-deliveries', auth_1.protect, (0, auth_1.authorize)(User_1.UserRole.ADMIN), orderController_1.getActiveDeliveries);
 router.get('/orders/:id/tracking', auth_1.protect, orderController_1.getOrderTracking);
+// Chatbot
+router.post('/chatbot', chatbotController_1.chatWithBot);
 // Test email endpoint - REMOVE after debugging
 router.post('/test-email', async (_req, res) => {
     try {
         console.log('Test email triggered');
-        console.log('RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY);
+        console.log('SENDGRID_API_KEY exists:', !!process.env.SENDGRID_API_KEY);
         const result = await (0, email_1.sendEmail)({
-            to: process.env.SMTP_USER || 'test@resend.dev',
+            to: process.env.SMTP_USER || 'test@example.com',
             subject: 'FreshCart Test Email',
             html: '<h1 style="color:green;">FreshCart email is working!</h1><p>This is a test email from your backend.</p>',
         });

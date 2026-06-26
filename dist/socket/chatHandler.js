@@ -7,7 +7,22 @@ exports.setupChatHandler = void 0;
 const Chat_1 = __importDefault(require("../models/Chat"));
 const Order_1 = __importDefault(require("../models/Order"));
 const locationDbThrottle = {};
+const userSocketMap = new Map(); // userId -> socketId
+const cleanupOldMessages = async () => {
+    try {
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        await Chat_1.default.updateMany({}, { $pull: { messages: { timestamp: { $lt: oneHourAgo } } } });
+    }
+    catch (error) {
+        console.error('Error cleaning up old messages:', error);
+    }
+};
+setInterval(cleanupOldMessages, 60 * 60 * 1000);
 const setupChatHandler = (io, socket) => {
+    socket.on('user_register', (userId) => {
+        userSocketMap.set(userId, socket.id);
+        console.log(`[Socket] User ${userId} registered with socket ${socket.id}`);
+    });
     socket.on('join_order_room', (orderId) => {
         socket.join(`order_${orderId}`);
     });
@@ -88,14 +103,44 @@ const setupChatHandler = (io, socket) => {
         socket.leave(`order_${orderId}`);
         socket.leave(`tracking_${orderId}`);
     });
-    socket.on('send_message', async ({ orderId, senderId, text }) => {
+    socket.on('send_message', async ({ orderId, senderId, senderName, text }) => {
         try {
-            const message = { senderId, text, timestamp: new Date() };
-            await Chat_1.default.findOneAndUpdate({ orderId }, { $push: { messages: message } }, { upsert: true });
-            io.to(`order_${orderId}`).emit('receive_message', message);
+            const message = { orderId, senderId, senderName, text, timestamp: new Date() };
+            await Chat_1.default.findOneAndUpdate({ orderId }, { $push: { messages: { senderId, senderName, text, timestamp: new Date() } } }, { upsert: true });
+            // Find recipient and emit directly to their socket only
+            try {
+                const order = await Order_1.default.findById(orderId).select('userId deliveryPartnerId');
+                if (order) {
+                    const recipientId = senderId === String(order.userId) ? String(order.deliveryPartnerId) : String(order.userId);
+                    const recipientSocketId = userSocketMap.get(recipientId);
+                    if (recipientSocketId) {
+                        io.to(recipientSocketId).emit('receive_message', message);
+                    }
+                }
+            }
+            catch (e) {
+                console.error('Error finding recipient:', e);
+            }
         }
         catch (error) {
             console.error('Error sending message:', error);
+        }
+    });
+    socket.on('get_chat_history', async ({ orderId }) => {
+        try {
+            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+            const chat = await Chat_1.default.findOne({ orderId });
+            if (chat) {
+                const recentMessages = chat.messages.filter((msg) => msg.timestamp >= oneHourAgo);
+                socket.emit('chat_history', recentMessages);
+            }
+            else {
+                socket.emit('chat_history', []);
+            }
+        }
+        catch (error) {
+            console.error('Error fetching chat history:', error);
+            socket.emit('chat_history', []);
         }
     });
     socket.on('typing_start', ({ orderId }) => {
@@ -105,6 +150,14 @@ const setupChatHandler = (io, socket) => {
         socket.to(`order_${orderId}`).emit('is_typing', { typing: false });
     });
     socket.on('disconnect', () => {
+        // Remove disconnected user from map
+        for (const [userId, socketId] of userSocketMap.entries()) {
+            if (socketId === socket.id) {
+                userSocketMap.delete(userId);
+                console.log(`[Socket] User ${userId} disconnected and removed from map`);
+                break;
+            }
+        }
         Object.keys(locationDbThrottle).forEach(key => {
             delete locationDbThrottle[key];
         });

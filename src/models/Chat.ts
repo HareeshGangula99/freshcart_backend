@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IMessage {
   senderId: mongoose.Types.ObjectId;
+  senderName: string;
   text: string;
   timestamp: Date;
 }
@@ -23,6 +24,7 @@ const ChatSchema: Schema = new Schema({
   }],
   messages: [{
     senderId: { type: Schema.Types.ObjectId, ref: 'User' },
+    senderName: { type: String, default: '' },
     text: { type: String },
     timestamp: { type: Date, default: Date.now },
   }],

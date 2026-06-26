@@ -42,6 +42,7 @@ const ChatSchema = new mongoose_1.Schema({
         }],
     messages: [{
             senderId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'User' },
+            senderName: { type: String, default: '' },
             text: { type: String },
             timestamp: { type: Date, default: Date.now },
         }],

@@ -14,6 +14,7 @@ import {
   createDeliveryPartner,
   getDeliveryPartners,
 } from '../controllers/adminController';
+import { chatWithBot } from '../controllers/chatbotController';
 import { protect, authorize } from '../middleware/auth';
 import { UserRole } from '../models/User';
 
@@ -65,6 +66,9 @@ router.get('/admin/delivery-partners', protect, authorize(UserRole.STORE_MANAGER
 router.get('/orders/partner', protect, authorize(UserRole.DELIVERY_PARTNER), getPartnerOrders);
 router.get('/orders/active-deliveries', protect, authorize(UserRole.ADMIN), getActiveDeliveries);
 router.get('/orders/:id/tracking', protect, getOrderTracking);
+
+// Chatbot
+router.post('/chatbot', chatWithBot);
 
 // Test email endpoint - REMOVE after debugging
 router.post('/test-email', async (_req, res) => {
