@@ -15,7 +15,7 @@ import {
   getDeliveryPartners,
 } from '../controllers/adminController';
 import { chatWithBot } from '../controllers/chatbotController';
-import { protect, authorize } from '../middleware/auth';
+import { protect, authorize, optionalAuth } from '../middleware/auth';
 import { UserRole } from '../models/User';
 
 const router = express.Router();
@@ -68,7 +68,7 @@ router.get('/orders/active-deliveries', protect, authorize(UserRole.ADMIN), getA
 router.get('/orders/:id/tracking', protect, getOrderTracking);
 
 // Chatbot
-router.post('/chatbot', chatWithBot);
+router.post('/chatbot', optionalAuth, chatWithBot);
 
 // Test email endpoint - REMOVE after debugging
 router.post('/test-email', async (_req, res) => {

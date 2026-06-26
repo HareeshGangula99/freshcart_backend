@@ -22,4 +22,6 @@ const DeliveryPartnerSchema: Schema = new Schema({
   },
 });
 
+DeliveryPartnerSchema.index({ isAvailable: 1 });
+
 export default mongoose.model<IDeliveryPartner>('DeliveryPartner', DeliveryPartnerSchema);

@@ -28,6 +28,19 @@ export const protect = (req: AuthRequest, res: Response, next: NextFunction) => 
   }
 };
 
+export const optionalAuth = (req: AuthRequest, _res: Response, next: NextFunction) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret') as any;
+      req.user = decoded;
+    } catch {
+      // Token invalid — continue without user
+    }
+  }
+  next();
+};
+
 export const authorize = (...roles: string[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user || !roles.includes(req.user.role)) {
