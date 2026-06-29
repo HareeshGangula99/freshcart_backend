@@ -61,10 +61,10 @@ export const getDeliveryPartners = async (req: Request, res: Response) => {
     const partnerMap = new Map(partnerDocs.map(p => [p.userId.toString(), p]));
 
     // Check active orders to determine free/busy status
-    const activeOrders = await Order.find({
+    const activeOrders = await (Order as any).find({
       orderStatus: { $in: ['DISPATCHED', 'OUT_FOR_DELIVERY'] },
     }).select('deliveryPartnerId');
-    const busyPartnerIds = new Set(activeOrders.map(o => o.deliveryPartnerId?.toString()).filter(Boolean));
+    const busyPartnerIds = new Set(activeOrders.map((o: any) => o.deliveryPartnerId?.toString()).filter(Boolean));
 
     const result = partners.map(p => ({
       ...p.toObject(),
