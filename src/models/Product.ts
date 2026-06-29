@@ -7,6 +7,7 @@ export interface IProduct extends Document {
   category: string;
   categories: string[];
   uom: string;
+  uomValue: number;
   imageURL: string;
   stockQuantity: number;
   storeId: mongoose.Types.ObjectId;
@@ -20,6 +21,7 @@ const ProductSchema: Schema = new Schema({
   category: { type: String },
   categories: [{ type: String }],
   uom: { type: String, default: 'qty', enum: ['kg', 'g', 'qty', 'ltr', 'ml', 'dozen', 'piece'] },
+  uomValue: { type: Number, default: 1 },
   imageURL: { type: String },
   stockQuantity: { type: Number, required: true },
   storeId: { type: Schema.Types.ObjectId, ref: 'User', required: true },

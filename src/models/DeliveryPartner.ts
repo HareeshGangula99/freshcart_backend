@@ -4,6 +4,7 @@ export interface IDeliveryPartner extends Document {
   userId: mongoose.Types.ObjectId;
   vehicleType: string;
   isAvailable: boolean;
+  isBlocked: boolean;
   rating: number;
   currentLocation: {
     lat: number;
@@ -15,6 +16,7 @@ const DeliveryPartnerSchema: Schema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
   vehicleType: { type: String, required: true },
   isAvailable: { type: Boolean, default: true },
+  isBlocked: { type: Boolean, default: false },
   rating: { type: Number, default: 5 },
   currentLocation: {
     lat: { type: Number },

@@ -13,8 +13,21 @@ import {
   approveUser,
   createDeliveryPartner,
   getDeliveryPartners,
+  blockDeliveryPartner,
+  getAllUsers,
+  blockUser,
+  getUserOffers,
+  createUserOffer,
+  deleteUserOffer,
+  toggleUserOffer,
+  getPremiumPlans,
+  createPremiumPlan,
+  updatePremiumPlan,
+  deletePremiumPlan,
+  getPremiumSubscribers,
 } from '../controllers/adminController';
 import { chatWithBot } from '../controllers/chatbotController';
+import { getSettings, updateSettings } from '../controllers/settingsController';
 import { protect, authorize, optionalAuth } from '../middleware/auth';
 import { UserRole } from '../models/User';
 
@@ -40,13 +53,13 @@ router.get('/products/:id', getProductById);
 router.get('/categories', getCategories);
 
 // Category Management
-router.get('/admin/categories', protect, authorize(UserRole.ADMIN), getAllCategories);
-router.post('/admin/categories', protect, authorize(UserRole.ADMIN), createCategory);
-router.delete('/admin/categories/:id', protect, authorize(UserRole.ADMIN), deleteCategory);
-router.post('/admin/products', protect, authorize(UserRole.ADMIN), createProduct);
-router.put('/admin/products/:id', protect, authorize(UserRole.ADMIN), updateProduct);
+router.get('/admin/categories', protect, authorize(UserRole.ADMIN, UserRole.STORE_MANAGER), getAllCategories);
+router.post('/admin/categories', protect, authorize(UserRole.ADMIN, UserRole.STORE_MANAGER), createCategory);
+router.delete('/admin/categories/:id', protect, authorize(UserRole.ADMIN, UserRole.STORE_MANAGER), deleteCategory);
+router.post('/admin/products', protect, authorize(UserRole.ADMIN, UserRole.STORE_MANAGER), createProduct);
+router.put('/admin/products/:id', protect, authorize(UserRole.ADMIN, UserRole.STORE_MANAGER), updateProduct);
 router.put('/manager/products/:id', protect, authorize(UserRole.STORE_MANAGER), updateStock);
-router.delete('/admin/products/:id', protect, authorize(UserRole.ADMIN), deleteProduct);
+router.delete('/admin/products/:id', protect, authorize(UserRole.ADMIN, UserRole.STORE_MANAGER), deleteProduct);
 
 // Payments & Orders
 router.post('/orders/create', protect, createRazorpayOrder);
@@ -56,19 +69,55 @@ router.get('/orders/manager', protect, authorize(UserRole.STORE_MANAGER), getMan
 router.patch('/orders/:id/dispatch', protect, authorize(UserRole.STORE_MANAGER), dispatchOrder);
 router.patch('/orders/:id/status', protect, authorize(UserRole.DELIVERY_PARTNER), updateOrderStatus);
 
-// Admin
-router.get('/admin/requests', protect, authorize(UserRole.ADMIN), getPendingApprovals);
-router.patch('/admin/approve/:id', protect, authorize(UserRole.ADMIN), approveUser);
-router.post('/admin/partners', protect, authorize(UserRole.ADMIN), createDeliveryPartner);
+// Admin & Manager
+router.get('/admin/requests', protect, authorize(UserRole.ADMIN, UserRole.STORE_MANAGER), getPendingApprovals);
+router.patch('/admin/approve/:id', protect, authorize(UserRole.ADMIN, UserRole.STORE_MANAGER), approveUser);
+router.post('/admin/partners', protect, authorize(UserRole.ADMIN, UserRole.STORE_MANAGER), createDeliveryPartner);
+router.get('/admin/delivery-partners', protect, authorize(UserRole.STORE_MANAGER, UserRole.ADMIN), getDeliveryPartners);
+router.patch('/admin/partners/:id/block', protect, authorize(UserRole.ADMIN, UserRole.STORE_MANAGER), blockDeliveryPartner);
 
-// ✅ New: Delivery partners list (manager can fetch for dispatch dropdown)
-router.get('/admin/delivery-partners', protect, authorize(UserRole.STORE_MANAGER), getDeliveryPartners);
+// Users
+router.get('/admin/users', protect, authorize(UserRole.ADMIN, UserRole.STORE_MANAGER), getAllUsers);
+router.patch('/admin/users/:id/block', protect, authorize(UserRole.ADMIN, UserRole.STORE_MANAGER), blockUser);
+
+// User Offers
+router.get('/admin/user-offers', protect, authorize(UserRole.ADMIN, UserRole.STORE_MANAGER), getUserOffers);
+router.post('/admin/user-offers', protect, authorize(UserRole.ADMIN, UserRole.STORE_MANAGER), createUserOffer);
+router.delete('/admin/user-offers/:id', protect, authorize(UserRole.ADMIN, UserRole.STORE_MANAGER), deleteUserOffer);
+router.patch('/admin/user-offers/:id/toggle', protect, authorize(UserRole.ADMIN, UserRole.STORE_MANAGER), toggleUserOffer);
+
+// Premium Plans
+router.get('/admin/premium-plans', protect, authorize(UserRole.ADMIN, UserRole.STORE_MANAGER), getPremiumPlans);
+router.post('/admin/premium-plans', protect, authorize(UserRole.ADMIN, UserRole.STORE_MANAGER), createPremiumPlan);
+router.put('/admin/premium-plans/:id', protect, authorize(UserRole.ADMIN, UserRole.STORE_MANAGER), updatePremiumPlan);
+router.delete('/admin/premium-plans/:id', protect, authorize(UserRole.ADMIN, UserRole.STORE_MANAGER), deletePremiumPlan);
+router.get('/admin/premium-subscribers', protect, authorize(UserRole.ADMIN, UserRole.STORE_MANAGER), getPremiumSubscribers);
 router.get('/orders/partner', protect, authorize(UserRole.DELIVERY_PARTNER), getPartnerOrders);
-router.get('/orders/active-deliveries', protect, authorize(UserRole.ADMIN), getActiveDeliveries);
+router.get('/orders/active-deliveries', protect, authorize(UserRole.ADMIN, UserRole.STORE_MANAGER), getActiveDeliveries);
 router.get('/orders/:id/tracking', protect, getOrderTracking);
 
 // Chatbot
 router.post('/chatbot', optionalAuth, chatWithBot);
+
+// User Premium & Offers
+router.get('/user/premium', protect, async (req: any, res: any) => {
+  try {
+    const { UserPremium } = require('../models/Premium');
+    const premium = await UserPremium.findOne({ userId: req.user.id, isActive: true, endDate: { $gt: new Date() } }).populate('planId');
+    res.json(premium || null);
+  } catch (error: any) { res.status(500).json({ message: error.message }); }
+});
+router.get('/user/offers', protect, async (req: any, res: any) => {
+  try {
+    const UserOffer = require('../models/UserOffer');
+    const offers = await UserOffer.find({ userIds: req.user.id, isActive: true, $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }] });
+    res.json(offers);
+  } catch (error: any) { res.status(500).json({ message: error.message }); }
+});
+
+// Settings
+router.get('/settings', getSettings);
+router.put('/admin/settings', protect, authorize(UserRole.ADMIN), updateSettings);
 
 // Test email endpoint - REMOVE after debugging
 router.post('/test-email', async (_req, res) => {

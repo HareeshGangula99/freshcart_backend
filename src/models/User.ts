@@ -19,6 +19,7 @@ export interface IUser extends Document {
   password?: string;
   role: UserRole;
   status: UserStatus;
+  isBlocked: boolean;
   authProvider: 'local' | 'google' | 'phone';
   avatar?: string;
   address: {
@@ -36,6 +37,7 @@ const UserSchema: Schema = new Schema({
   password: { type: String },
   role: { type: String, enum: Object.values(UserRole), default: UserRole.USER },
   status: { type: String, enum: Object.values(UserStatus), default: UserStatus.APPROVED },
+  isBlocked: { type: Boolean, default: false },
   authProvider: { type: String, enum: ['local', 'google', 'phone'], default: 'local' },
   avatar: { type: String },
   address: {

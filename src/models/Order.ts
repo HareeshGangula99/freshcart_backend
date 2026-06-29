@@ -37,6 +37,11 @@ export interface IOrder extends Document {
     lat?: number;
     lng?: number;
   };
+  subtotal: number;
+  totalTax: number;
+  handlingFee: number;
+  deliveryFee: number;
+  gstRate: number;
   deliveryProof?: string;
   deliveryPartnerLocation?: {
     lat: number;
@@ -72,6 +77,11 @@ const OrderSchema: Schema = new Schema({
     lat: { type: Number },
     lng: { type: Number },
   },
+  subtotal: { type: Number },
+  totalTax: { type: Number },
+  handlingFee: { type: Number },
+  deliveryFee: { type: Number },
+  gstRate: { type: Number },
   deliveryProof: { type: String },
   deliveryPartnerLocation: {
     lat: { type: Number },

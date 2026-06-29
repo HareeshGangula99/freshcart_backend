@@ -2,6 +2,9 @@ import { Request, Response } from 'express';
 import Razorpay from 'razorpay';
 import Order, { PaymentStatus, OrderStatus } from '../models/Order';
 import Product from '../models/Product';
+import Settings from '../models/Settings';
+import UserOffer from '../models/UserOffer';
+import { UserPremium } from '../models/Premium';
 import User, { UserRole, UserStatus } from '../models/User';
 import { sendEmail } from '../config/email';
 
@@ -13,8 +16,16 @@ const razorpay = new Razorpay({
 export const createRazorpayOrder = async (req: Request, res: Response) => {
   try {
     const { products, deliveryAddress, customerLocation } = req.body;
+    const userId = (req as any).user.id;
 
-    let totalAmount = 0;
+    let settings = await Settings.findOne();
+    if (!settings) settings = await Settings.create({});
+
+    // Fetch user premium and offers
+    const userPremium = await UserPremium.findOne({ userId, isActive: true, endDate: { $gt: new Date() } }).populate('planId');
+    const userOfferDocs = await UserOffer.find({ userIds: userId, isActive: true, $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }] });
+
+    let subtotal = 0;
     const productIds = products.map((item: any) => item.productId);
     const dbProducts = await Product.find({ _id: { $in: productIds } });
     const productMap = new Map(dbProducts.map(p => [p._id.toString(), p]));
@@ -24,9 +35,40 @@ export const createRazorpayOrder = async (req: Request, res: Response) => {
     for (const item of products) {
       const product = productMap.get(item.productId);
       if (!product) return res.status(404).json({ message: `Product not found: ${item.productId}` });
-      totalAmount += product.price * item.quantity;
-      productDetails.push({ productId: item.productId, quantity: item.quantity, priceAtPurchase: product.price });
+      if (item.quantity > product.stockQuantity) {
+        return res.status(400).json({ message: `Insufficient stock for ${product.name}. Available: ${product.stockQuantity}, Requested: ${item.quantity}` });
+      }
+      // Check for user-specific price overrides
+      let unitPrice = product.price;
+      for (const offer of userOfferDocs) {
+        const priceOverride = offer.priceOverrides?.find((po: any) => po.productId.toString() === item.productId);
+        if (priceOverride) { unitPrice = priceOverride.customPrice; break; }
+      }
+      subtotal += unitPrice * item.quantity;
+      productDetails.push({ productId: item.productId, quantity: item.quantity, priceAtPurchase: unitPrice });
     }
+
+    // Determine effective delivery settings
+    let effectiveFreeDeliveryAbove = settings.freeDeliveryAbove;
+    let effectiveDeliveryFee = settings.deliveryFee;
+    let effectiveDiscount = 0;
+
+    if (userPremium?.planId) {
+      const plan = userPremium.planId as any;
+      if (plan.freeDeliveryAbove !== undefined && plan.freeDeliveryAbove < effectiveFreeDeliveryAbove) effectiveFreeDeliveryAbove = plan.freeDeliveryAbove;
+      if (plan.deliveryFee !== undefined && plan.deliveryFee < effectiveDeliveryFee) effectiveDeliveryFee = plan.deliveryFee;
+      if (plan.discountPercent) effectiveDiscount = plan.discountPercent;
+    }
+
+    for (const offer of userOfferDocs) {
+      if (offer.freeDeliveryAbove && offer.freeDeliveryAbove < effectiveFreeDeliveryAbove) effectiveFreeDeliveryAbove = offer.freeDeliveryAbove;
+      if (offer.deliveryFee !== undefined && offer.deliveryFee < effectiveDeliveryFee) effectiveDeliveryFee = offer.deliveryFee;
+    }
+
+    const premiumDiscount = effectiveDiscount > 0 ? subtotal * (effectiveDiscount / 100) : 0;
+    const totalTax = (subtotal - premiumDiscount) * (settings.gstRate / 100);
+    const deliveryFee = subtotal >= effectiveFreeDeliveryAbove ? 0 : effectiveDeliveryFee;
+    const totalAmount = subtotal - premiumDiscount + totalTax + settings.handlingFee + deliveryFee;
 
     const razorpayOrder = await razorpay.orders.create({
       amount: totalAmount * 100,
@@ -62,6 +104,12 @@ export const createRazorpayOrder = async (req: Request, res: Response) => {
       userId: (req as any).user.id,
       products: productDetails,
       totalAmount,
+      subtotal,
+      totalTax,
+      premiumDiscount,
+      handlingFee: settings.handlingFee,
+      deliveryFee,
+      gstRate: settings.gstRate,
       paymentStatus: PaymentStatus.PENDING,
       orderStatus: OrderStatus.PLACED,
       razorpayOrderId: razorpayOrder.id,
