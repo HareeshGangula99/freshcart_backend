@@ -140,7 +140,7 @@ export const verifyPayment = async (req: Request, res: Response) => {
           <h3>Items Ordered:</h3>
           <ul>${itemsList}</ul>
           <p><strong>Total Paid:</strong> ₹${order.totalAmount}</p>
-          <p><strong>Deliver To:</strong> ${orderAny.deliveryAddress?.street}, ${orderAny.deliveryAddress?.city} - ${orderAny.deliveryAddress?.zip}</p>
+          <p><strong>Deliver To:</strong> ${orderAny.deliveryAddress?.street}${orderAny.deliveryAddress?.building ? ', ' + orderAny.deliveryAddress.building : ''}${orderAny.deliveryAddress?.landmark ? ' (Near ' + orderAny.deliveryAddress.landmark + ')' : ''}, ${orderAny.deliveryAddress?.city} - ${orderAny.deliveryAddress?.zip}</p>
           <br/>
           <p>We'll notify you once your order is dispatched!</p>
           <p style="color:#6b7280;font-size:12px;">Thank you for shopping with FreshCart!</p>
@@ -164,7 +164,7 @@ export const verifyPayment = async (req: Request, res: Response) => {
               <h3>Items:</h3>
               <ul>${itemsList}</ul>
               <p><strong>Total:</strong> ₹${order.totalAmount}</p>
-              <p><strong>Address:</strong> ${orderAny.deliveryAddress?.street}, ${orderAny.deliveryAddress?.city} - ${orderAny.deliveryAddress?.zip}</p>
+              <p><strong>Address:</strong> ${orderAny.deliveryAddress?.street}${orderAny.deliveryAddress?.building ? ', ' + orderAny.deliveryAddress.building : ''}${orderAny.deliveryAddress?.landmark ? ' (Near ' + orderAny.deliveryAddress.landmark + ')' : ''}, ${orderAny.deliveryAddress?.city} - ${orderAny.deliveryAddress?.zip}</p>
               <br/>
               <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/manager" style="background:#16a34a;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;">
                 Open Manager Dashboard

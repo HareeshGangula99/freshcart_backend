@@ -286,7 +286,7 @@ const handlePartnerDeliveries = async (userId: string): Promise<string> => {
   orders.forEach((o, i) => {
     const id = o._id.toString().slice(-6).toUpperCase();
     const name = (o.userId as any)?.name || 'Customer';
-    const addr = o.deliveryAddress ? `${o.deliveryAddress.street}, ${o.deliveryAddress.city}` : 'N/A';
+    const addr = o.deliveryAddress ? `${o.deliveryAddress.street}${o.deliveryAddress.building ? ', ' + o.deliveryAddress.building : ''}${o.deliveryAddress.landmark ? ' (Near ' + o.deliveryAddress.landmark + ')' : ''}, ${o.deliveryAddress.city}` : 'N/A';
     reply += `**${i + 1}.** #${id}\n   👤 ${name} | 📱 ${(o.userId as any)?.phone || 'N/A'}\n   📍 ${addr}\n   📦 ${statusMap[o.orderStatus] || o.orderStatus}\n\n`;
   });
 
@@ -340,7 +340,7 @@ export const chatWithBot = async (req: AuthRequest, res: Response) => {
     // --- Order context (from OrderHelpChat) ---
     if (orderContext) {
       const items = orderContext.items?.map((item: any) => `${item.name} x${item.qty} ₹${item.price}`).join(', ') || 'N/A';
-      const address = orderContext.deliveryAddress ? `${orderContext.deliveryAddress.street}, ${orderContext.deliveryAddress.city}` : 'N/A';
+      const address = orderContext.deliveryAddress ? `${orderContext.deliveryAddress.street}${orderContext.deliveryAddress.building ? ', ' + orderContext.deliveryAddress.building : ''}${orderContext.deliveryAddress.landmark ? ' (Near ' + orderContext.deliveryAddress.landmark + ')' : ''}, ${orderContext.deliveryAddress.city}` : 'N/A';
       const status = statusMap[orderContext.orderStatus] || orderContext.orderStatus;
       const orderId = orderContext.orderId.slice(-6).toUpperCase();
 
@@ -383,7 +383,7 @@ RULES:
       }
 
       const items = order.products.map((item: any) => `${item.productId?.name || 'Product'} x${item.quantity} ₹${item.priceAtPurchase}`).join(', ');
-      const address = order.deliveryAddress ? `${order.deliveryAddress.street}, ${order.deliveryAddress.city}` : 'N/A';
+      const address = order.deliveryAddress ? `${order.deliveryAddress.street}${order.deliveryAddress.building ? ', ' + order.deliveryAddress.building : ''}${order.deliveryAddress.landmark ? ' (Near ' + order.deliveryAddress.landmark + ')' : ''}, ${order.deliveryAddress.city}` : 'N/A';
       const status = statusMap[order.orderStatus] || order.orderStatus;
       const orderId = order._id.toString().slice(-6).toUpperCase();
 

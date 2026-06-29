@@ -30,6 +30,8 @@ export interface IOrder extends Document {
   razorpayPaymentId?: string;
   deliveryAddress: {
     street: string;
+    building?: string;
+    landmark?: string;
     city: string;
     zip: string;
     lat?: number;
@@ -63,6 +65,8 @@ const OrderSchema: Schema = new Schema({
   razorpayPaymentId: { type: String },
   deliveryAddress: {
     street: { type: String },
+    building: { type: String },
+    landmark: { type: String },
     city: { type: String },
     zip: { type: String },
     lat: { type: Number },
